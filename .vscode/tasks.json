@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Compile and Run Pathfinding Demo",
+			"type": "shell",
+			"command": "cd d:/Study/college/SEM3/FODS/police-sim && javac -cp src src/models/*.java src/algorithms/*.java src/*.java && java -cp src PathfindingDemo",
+			"group": "build",
+			"isBackground": false,
+			"problemMatcher": [
+				"$javac"
+			]
+		}
+	]
+}
