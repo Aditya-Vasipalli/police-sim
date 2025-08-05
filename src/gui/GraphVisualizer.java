@@ -5,7 +5,9 @@ import models.Graph;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.*;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
 
 public class GraphVisualizer extends JPanel {
     private Graph graph;
