@@ -13,7 +13,7 @@ public class GraphVisualizer extends JPanel {
     private Graph graph;
 
     public GraphVisualizer(Graph graph) {
-        this.graph = graph; // TODO: save the map to draw
+        this.graph = graph; // Store the graph for visualization
         setPreferredSize(new Dimension(600, 600));
     }
 

@@ -2,37 +2,37 @@ package models;
 
 import java.util.*;
 
-// This class stores the full city as a graph
+// This class stores the city map as a graph data structure
 public class Graph {
-    // TODO: every place (node) has a list of connected roads (edges)
+    // Each node (location) has a list of connected edges (roads)
     private Map<Integer, List<Edge>> adjacencyList;
 
     public Graph() {
-        // TODO: start with empty map
+        // Initialize with empty adjacency list
         adjacencyList = new HashMap<>();
     }
 
     public void addEdge(int from, int to, double weight) {
-        // TODO: connect two places with a road
+        // Create bidirectional connection between two nodes
         adjacencyList.putIfAbsent(from, new ArrayList<>());
         adjacencyList.putIfAbsent(to, new ArrayList<>());
 
-        adjacencyList.get(from).add(new Edge(to, weight));  // one direction
-        adjacencyList.get(to).add(new Edge(from, weight));  // TODO: both ways
+        adjacencyList.get(from).add(new Edge(to, weight));  // from -> to
+        adjacencyList.get(to).add(new Edge(from, weight));  // to -> from (bidirectional)
     }
 
     public List<Edge> getNeighbors(int node) {
-        // TODO: give list of connected roads
+        // Return all edges connected to this node
         return adjacencyList.getOrDefault(node, new ArrayList<>());
     }
 
     public boolean containsNode(int node) {
-        // TODO: check if place exists
+        // Check if the node exists in the graph
         return adjacencyList.containsKey(node);
     }
 
     public Map<Integer, List<Edge>> getAllEdges() {
-        // TODO: give full city map
+        // Return the complete adjacency list
         return adjacencyList;
     }
 }

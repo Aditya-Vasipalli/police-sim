@@ -161,23 +161,17 @@ public class SimulatorCore {
      * Generate new crimes for this tick
      */
     private void generateCrimes() {
-        // TODO: Remove stub when PoliceManager is implemented
-        if (policeManager == null) {
-            // Stub: Generate crimes without police manager
-            Crime newCrime = crimeGenerator.generateCrime();
-            if (newCrime != null) {
-                totalCrimesGenerated++;
-                logEvent("New crime generated: " + newCrime.getType() + 
-                        " (" + newCrime.getSeverity() + ") at location " + newCrime.getLocationId());
-            }
-            return;
-        }
-        
+        // Generate new crimes and integrate with police manager
         Crime newCrime = crimeGenerator.generateCrime();
         if (newCrime != null) {
             totalCrimesGenerated++;
             logEvent("New crime generated: " + newCrime.getType() + 
                     " (" + newCrime.getSeverity() + ") at location " + newCrime.getLocationId());
+            
+            // Notify police manager if available
+            if (policeManager != null) {
+                policeManager.handleNewCrime(newCrime);
+            }
         }
     }
     
@@ -185,7 +179,7 @@ public class SimulatorCore {
      * Process crime assignments and dispatch units
      */
     private void processDispatches() {
-        // TODO: Remove stub when PoliceManager is implemented
+        // Process dispatch operations with police manager
         if (policeManager == null) {
             logEvent("Police manager not available - skipping dispatch");
             return;
@@ -218,7 +212,7 @@ public class SimulatorCore {
      * Update unit movements and statuses
      */
     private void updateUnits() {
-        // TODO: Remove stub when PoliceManager is implemented
+        // Update unit movements and positions
         if (policeManager == null) {
             return;
         }
@@ -237,14 +231,14 @@ public class SimulatorCore {
      * Handle crime resolutions
      */
     private void resolveCrimes() {
-        // TODO: Remove stub when PoliceManager is implemented
+        // Process crime resolution through police manager
         if (policeManager == null) {
-            // Stub: Randomly resolve some crimes
+            // Fallback: Randomly resolve some crimes when no police manager
             List<Crime> activeCrimes = crimeGenerator.getActiveCrimes();
             if (!activeCrimes.isEmpty() && Math.random() < 0.1) { // 10% chance to resolve
                 Crime crime = activeCrimes.get(0);
                 crimeGenerator.resolveCrime(crime.getCrimeId());
-                logEvent("Crime " + crime.getCrimeId() + " resolved (stub)");
+                logEvent("Crime " + crime.getCrimeId() + " resolved (fallback)");
             }
             return;
         }
@@ -268,7 +262,7 @@ public class SimulatorCore {
     private void printTickSummary() {
         List<Crime> activeCrimes = crimeGenerator.getActiveCrimes();
         
-        // TODO: Remove stub when PoliceManager is implemented
+        // Get unit statistics from police manager
         int availableUnits = (policeManager != null) ? policeManager.getAvailableUnits().size() : 0;
         int dispatchedUnits = (policeManager != null) ? policeManager.getDispatchedUnits().size() : 0;
         
