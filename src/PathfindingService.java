@@ -237,6 +237,7 @@ public class PathfindingService {
     }
     
     private void initializeNodeMap() {
+        this.nodeMap = cityMap.getAllNodes();
     }
     
     private String generateCacheKey(int start, int end, OptimizationStrategy strategy) {

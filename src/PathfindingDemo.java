@@ -133,7 +133,7 @@ public class PathfindingDemo {
         String[] heuristicNames = {"Euclidean", "Manhattan", "Zero (Dijkstra-like)"};
         
         for (int i = 0; i < heuristics.length; i++) {
-            System.out.printf("%nTesting %s heuristic:%n", heuristicNames[i]);
+            System.out.printf("\nTesting %s heuristic:\n", heuristicNames[i]);
             
             long startTime = System.nanoTime();
             AStar.AStarResult result = AStar.findPath(nodeMap, sourceNode, targetNode, heuristics[i]);
@@ -146,7 +146,7 @@ public class PathfindingDemo {
         }
         
         // Demonstrate adaptive A*
-        System.out.println("%nDemonstrating Adaptive A*:");
+        System.out.println("\nDemonstrating Adaptive A*:");
         AStar.AdaptiveAStar adaptiveAStar = new AStar.AdaptiveAStar();
         
         for (int i = 0; i < 3; i++) {
@@ -180,7 +180,7 @@ public class PathfindingDemo {
         }
         
         // Repeat some requests to show cache hits
-        System.out.println("%nRepeating requests to demonstrate cache hits:");
+        System.out.println("\nRepeating requests to demonstrate cache hits:");
         for (int i = 0; i < 3; i++) {
             int start = nodeIds.get(i % nodeIds.size());
             int end = nodeIds.get((i + 3) % nodeIds.size());
@@ -195,7 +195,7 @@ public class PathfindingDemo {
         
         // Show cache statistics
         PathfindingService.PathfindingStats stats = service.getPerformanceStats();
-        System.out.printf("%nCache Statistics:%n");
+        System.out.println("\nCache Statistics:");
         System.out.printf("  Total requests: %d%n", stats.totalRequests);
         System.out.printf("  Cache hits: %d%n", stats.cacheHits);
         System.out.printf("  Cache hit rate: %.2f%%%n", stats.cacheHitRate * 100);

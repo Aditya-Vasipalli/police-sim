@@ -70,6 +70,10 @@ public class Dijkstra {
             return heap.isEmpty();
         }
         
+        public boolean contains(int nodeId) {
+            return nodeToIndex.containsKey(nodeId);
+        }
+        
         private void heapifyUp(int index) {
             while (index > 0) {
                 int parentIndex = (index - 1) / 2;
@@ -244,10 +248,11 @@ public class Dijkstra {
                 if (newDistance < distances.get(neighbor)) {
                     distances.put(neighbor, newDistance);
                     predecessors.put(neighbor, currentNode);
-                    minHeap.decreaseKey(neighbor, newDistance);
                     
-                    if (distances.get(neighbor) == Double.MAX_VALUE) {
+                    if (!minHeap.contains(neighbor)) {
                         minHeap.insert(neighbor, newDistance);
+                    } else {
+                        minHeap.decreaseKey(neighbor, newDistance);
                     }
                 }
             }
