@@ -4,7 +4,6 @@
 // Prefix sum arrays for fast statistical computations
 // Quick sort for top-N performance reporting
 
-import models.Stat;
 import java.util.*;
 import java.io.*;
 import java.time.LocalDateTime;
@@ -101,13 +100,11 @@ public class Reporting {
         private final List<Double> originalData;
         private final double[] prefixSums;
         private final double[] prefixSumSquares;
-        private final LocalDateTime[] timestamps;
         
         public PrefixSumStats(List<Double> data, List<LocalDateTime> timestamps) {
             this.originalData = new ArrayList<>(data);
             this.prefixSums = new double[data.size() + 1];
             this.prefixSumSquares = new double[data.size() + 1];
-            this.timestamps = timestamps.toArray(new LocalDateTime[0]);
             
             buildPrefixSums();
         }

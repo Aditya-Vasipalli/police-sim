@@ -2,8 +2,6 @@
 // Individual component tests to verify all DSA implementations
 
 import algorithms.Dijkstra;
-import algorithms.AStar;
-import models.CityMapNode;
 import java.util.*;
 
 public class ComponentTest {

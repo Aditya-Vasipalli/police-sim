@@ -3,16 +3,12 @@
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.*;
-import java.util.List;
 import javax.swing.border.EmptyBorder;
 
 public class PoliceSimulatorGUI extends JFrame {
     private CityMap cityMap;
     private PathfindingService pathfindingService;
-    private Reporting reporting;
     
     // GUI Components
     private PathfindingPanel pathPanel;
@@ -48,7 +44,6 @@ public class PoliceSimulatorGUI extends JFrame {
         // Core simulation components
         cityMap = new CityMap("city_map.csv");
         pathfindingService = new PathfindingService(cityMap);
-        reporting = new Reporting();
         
         // GUI panels
         pathPanel = new PathfindingPanel();

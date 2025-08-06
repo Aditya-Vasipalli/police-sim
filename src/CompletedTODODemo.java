@@ -1,8 +1,7 @@
 // CompletedTODODemo.java
-// Demonstration of all the completed TODO items
+// Demonstration of all the completed items
 
 import javax.swing.*;
-import java.awt.*;
 import gui.*;
 import algorithms.*;
 import services.*;

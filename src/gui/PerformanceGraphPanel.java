@@ -4,7 +4,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.*;
 import java.util.*;
-import java.util.List;
 
 /**
  * GUI panel that displays performance graphs for the police simulation

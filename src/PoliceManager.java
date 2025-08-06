@@ -15,10 +15,8 @@ import models.Unit;
 import models.Assignment;
 
 public class PoliceManager {
-    private CityMap cityMap;
     
     public PoliceManager(CityMap cityMap) {
-        this.cityMap = cityMap;
         // Initialize police stations and units
         System.out.println("PoliceManager initialized with graceful stubs");
     }

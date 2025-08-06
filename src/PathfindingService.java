@@ -16,11 +16,9 @@ public class PathfindingService {
     private long totalComputationTime;
     
     public static class LRUCache<K, V> {
-        private final int maxSize;
         private final LinkedHashMap<K, V> cache;
         
         public LRUCache(int maxSize) {
-            this.maxSize = maxSize;
             this.cache = new LinkedHashMap<K, V>(16, 0.75f, true) {
                 @Override
                 protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {

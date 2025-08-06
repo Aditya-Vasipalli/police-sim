@@ -18,7 +18,6 @@ public class UnitBalancerService {
     // Configuration parameters
     private static final double MIN_COVERAGE_DISTANCE = 5.0; // km
     private static final int MAX_UNITS_PER_AREA = 3;
-    private static final double REBALANCE_THRESHOLD = 10.0; // minutes between rebalancing
     
     public UnitBalancerService() {
         this.cityGraph = new HashMap<>();

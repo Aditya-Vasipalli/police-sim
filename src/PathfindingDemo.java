@@ -186,7 +186,7 @@ public class PathfindingDemo {
             int end = nodeIds.get((i + 3) % nodeIds.size());
             
             long startTime = System.nanoTime();
-            PathfindingService.PathResult result = service.calculateShortestPath(start, end);
+            service.calculateShortestPath(start, end);
             long endTime = System.nanoTime();
             
             System.out.printf("  Cached request: %d->%d, time=%.3f ms%n",
