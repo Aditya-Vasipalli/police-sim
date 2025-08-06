@@ -99,6 +99,35 @@ public class PathfindingService {
         return calculateShortestPath(startNode, endNode, OptimizationStrategy.FASTEST_PATH);
     }
     
+    /**
+     * Calculate shortest path for police navigation (uses A* with traffic awareness)
+     */
+    public PathResult calculatePoliceNavigationPath(int startNode, int endNode) {
+        totalPathRequests++;
+        
+        String cacheKey = generateCacheKey(startNode, endNode, OptimizationStrategy.FASTEST_PATH) + "_POLICE";
+        
+        PathResult cachedResult = pathCache.get(cacheKey);
+        if (cachedResult != null) {
+            cacheHits++;
+            updateRouteFrequency(cacheKey);
+            return cachedResult;
+        }
+        
+        long startTime = System.nanoTime();
+        
+        // Always use A* for police navigation with traffic awareness
+        PathResult result = calculatePathWithAStarTrafficAware(startNode, endNode);
+        
+        long endTime = System.nanoTime();
+        totalComputationTime += (endTime - startTime);
+        
+        pathCache.put(cacheKey, result);
+        updateRouteFrequency(cacheKey);
+        
+        return result;
+    }
+    
     public PathResult calculateShortestPath(int startNode, int endNode, 
                                           OptimizationStrategy strategy) {
         totalPathRequests++;
@@ -287,6 +316,44 @@ public class PathfindingService {
             result.getTotalDistance(), 
             computationTime, 
             "A*", 
+            result.getNodesExplored()
+        );
+    }
+    
+    /**
+     * Traffic-aware A* pathfinding specifically for police navigation
+     * Considers dynamic traffic conditions and emergency vehicle priorities
+     */
+    private PathResult calculatePathWithAStarTrafficAware(int start, int end) {
+        long startTime = System.nanoTime();
+        
+        // Create traffic-aware heuristic for police vehicles
+        AStar.HeuristicFunction policeHeuristic = (currentNode, goalNode) -> {
+            if (currentNode == null || goalNode == null) {
+                return Double.POSITIVE_INFINITY;
+            }
+            
+            // Base Euclidean distance
+            double baseDistance = currentNode.getEuclideanDistance(goalNode);
+            
+            // Adjust for traffic conditions (police can bypass some traffic)
+            double trafficMultiplier = currentNode.getTrafficMultiplier();
+            double policeTrafficFactor = Math.max(0.6, trafficMultiplier * 0.8); // Police can reduce traffic impact
+            
+            return baseDistance * policeTrafficFactor;
+        };
+        
+        // Use A* with police-specific heuristic
+        AStar.AStarResult result = AStar.findPath(nodeMap, start, end, policeHeuristic);
+        
+        long endTime = System.nanoTime();
+        long computationTime = endTime - startTime;
+        
+        return new PathResult(
+            result.getPath(), 
+            result.getTotalDistance(), 
+            computationTime, 
+            "A*-Police-Traffic", 
             result.getNodesExplored()
         );
     }

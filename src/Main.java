@@ -19,7 +19,8 @@ public class Main {
         try {
             // Initialize core modules
             System.out.println("Loading city map...");
-            CityMap cityMap = new CityMap("city_map.csv"); // Will fallback to default map if file not found
+            CityMap cityMap = new CityMap("big_city_map.csv");
+            System.out.println("Loaded city map with " + cityMap.getTotalNodes() + " nodes and " + cityMap.getTotalEdges() + " edges");
             
             System.out.println("Initializing pathfinding service...");
             PathfindingService pathfindingService = new PathfindingService(cityMap);
@@ -27,12 +28,9 @@ public class Main {
             System.out.println("Initializing crime generator...");
             CrimeGenerator crimeGenerator = new CrimeGenerator(cityMap);
             
-            System.out.println("Initializing police manager...");
-            // Initialize police manager with city map
-            PoliceManager policeManager = new PoliceManager(cityMap);
-            
-            System.out.println("Initializing simulation core...");
-            SimulatorCore simulatorCore = new SimulatorCore(cityMap, policeManager, crimeGenerator, pathfindingService);
+            System.out.println("Initializing simulation core with station-based police...");
+            // Use the new factory method that properly distributes police at stations
+            SimulatorCore simulatorCore = SimulatorCore.createWithStationBasedPolice(cityMap, crimeGenerator, pathfindingService);
             
             System.out.println("All modules initialized successfully!");
             System.out.println("=====================================");
