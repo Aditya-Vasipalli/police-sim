@@ -1,15 +1,16 @@
 // QuickCrimeTest.java
 // Quick test to show crime generation
 
+import models.Crime;
+
 public class QuickCrimeTest {
     public static void main(String[] args) {
         System.out.println("=== CRIME GENERATION TEST ===");
         
         try {
             // Initialize city map
-            CityMap cityMap = new CityMap();
-            cityMap.loadFromCSV("city_map.csv");
-            System.out.println("City map loaded: " + cityMap.getNodeCount() + " nodes");
+            CityMap cityMap = new CityMap("city_map.csv"); // Will create default if file not found
+            System.out.println("City map loaded: " + cityMap.getTotalNodes() + " nodes");
             
             // Initialize crime generator
             CrimeGenerator crimeGenerator = new CrimeGenerator(cityMap);
@@ -17,14 +18,14 @@ public class QuickCrimeTest {
             
             // Generate 5 crimes
             System.out.println("\nGenerating 5 crimes:");
-            System.out.println("=".repeat(50));
+            System.out.println("==================================================");
             
             for (int i = 1; i <= 5; i++) {
                 Crime crime = crimeGenerator.generateCrime();
                 if (crime != null) {
-                    System.out.printf("Crime %d: %s (%s) at Node %d - Priority: %s%n",
+                    System.out.printf("Crime %d: %s (%s) at Node %d - Status: %s%n",
                         i, crime.getType(), crime.getSeverity(), 
-                        crime.getLocationId(), crime.getPriority());
+                        crime.getLocationId(), crime.getStatus());
                 } else {
                     System.out.println("Crime " + i + ": Failed to generate");
                 }
