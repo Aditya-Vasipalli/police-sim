@@ -1,6 +1,5 @@
 // PoliceAssignmentPanel.java
 // GUI: Displays police unit assignments to crimes
-// Fixed duplicate method errors
 
 import javax.swing.*;
 import javax.swing.table.*;

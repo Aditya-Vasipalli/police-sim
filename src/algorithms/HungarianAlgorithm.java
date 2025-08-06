@@ -67,7 +67,7 @@ public class HungarianAlgorithm {
         List<Assignment> result = new ArrayList<>();
         for (int i = 0; i < numUnits; i++) {
             int crimeIndex = assignment[i];
-            if (crimeIndex < numCrimes && costMatrix[i][crimeIndex] < maxCost) {
+            if (crimeIndex >= 0 && crimeIndex < numCrimes && costMatrix[i][crimeIndex] < maxCost) {
                 result.add(new Assignment(unitIds[i], crimeIds[crimeIndex], costMatrix[i][crimeIndex]));
             }
         }

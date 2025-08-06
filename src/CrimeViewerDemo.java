@@ -3,17 +3,14 @@
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.util.*;
-import java.util.List;
+import models.Crime;
 
 public class CrimeViewerDemo extends JFrame {
     private CrimeGenerator crimeGenerator;
     private CityMap cityMap;
     private JTextArea crimeLogArea;
     private JLabel statsLabel;
-    private Timer crimeTimer;
+    private javax.swing.Timer crimeTimer;
     private int crimeCount = 0;
     
     public CrimeViewerDemo() {
@@ -66,17 +63,16 @@ public class CrimeViewerDemo extends JFrame {
     private void setupCrimeGeneration() {
         try {
             // Initialize city map
-            cityMap = new CityMap();
-            cityMap.loadFromCSV("city_map.csv");
+            cityMap = new CityMap("city_map.csv"); // Will create default if file not found
             
             // Initialize crime generator
             crimeGenerator = new CrimeGenerator(cityMap);
             
             appendToLog("Crime generation system initialized successfully!");
-            appendToLog("City map loaded with " + cityMap.getNodeCount() + " locations");
+            appendToLog("City map loaded with " + cityMap.getTotalNodes() + " locations");
             appendToLog("Click 'Generate Crime Now' to create crimes manually");
             appendToLog("Or click 'Start Auto Generation' for continuous crime generation");
-            appendToLog("=" * 60);
+            appendToLog("============================================================");
             
         } catch (Exception e) {
             appendToLog("Error initializing crime generation: " + e.getMessage());
@@ -107,10 +103,9 @@ public class CrimeViewerDemo extends JFrame {
         sb.append(String.format("  Type: %s\n", crime.getType()));
         sb.append(String.format("  Severity: %s\n", crime.getSeverity()));
         sb.append(String.format("  Location: Node %d\n", crime.getLocationId()));
-        sb.append(String.format("  Priority: %s\n", crime.getPriority()));
-        sb.append(String.format("  Time: %s\n", new java.util.Date(crime.getTimestamp())));
-        sb.append(String.format("  Description: %s\n", crime.getDescription()));
-        sb.append("-".repeat(50) + "\n");
+        sb.append(String.format("  Status: %s\n", crime.getStatus()));
+        sb.append(String.format("  Time: %s\n", crime.getTimestamp().toString()));
+        sb.append("--------------------------------------------------\n");
         
         appendToLog(sb.toString());
     }
@@ -121,7 +116,7 @@ public class CrimeViewerDemo extends JFrame {
         }
         
         // Generate crime every 2 seconds
-        crimeTimer = new Timer(2000, e -> generateSingleCrime());
+        crimeTimer = new javax.swing.Timer(2000, e -> generateSingleCrime());
         crimeTimer.start();
         
         appendToLog("*** AUTO CRIME GENERATION STARTED ***");
@@ -154,12 +149,7 @@ public class CrimeViewerDemo extends JFrame {
     
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeel());
-            } catch (Exception e) {
-                // Use default look and feel
-            }
-            
+            // Start the demo application
             new CrimeViewerDemo().setVisible(true);
         });
     }

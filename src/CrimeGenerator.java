@@ -298,7 +298,7 @@ public class CrimeGenerator {
         // Generate random location ID from available city map nodes
         if (cityMap != null) {
             // Get valid location IDs from the city map
-            Set<Integer> validLocations = cityMap.getAllNodeIds();
+            Set<Integer> validLocations = cityMap.getAllNodes().keySet();
             if (!validLocations.isEmpty()) {
                 List<Integer> locationList = new ArrayList<>(validLocations);
                 return locationList.get(ThreadLocalRandom.current().nextInt(locationList.size()));

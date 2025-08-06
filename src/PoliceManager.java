@@ -9,7 +9,6 @@
 //   PoliceManager pm = new PoliceManager(cityMap);
 //   pm.assignUnitToCrime(unitId, crimeId);
 //   pm.updateUnitLocation(unitId, nodeId);
-import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 import models.Unit;
@@ -59,6 +58,12 @@ public class PoliceManager {
         // Return empty list for now - graceful degradation
         return new ArrayList<>();
     }
-    
+
+    public void handleNewCrime(models.Crime crime) {
+        // Graceful stub - log the action
+        System.out.println("PoliceManager.handleNewCrime: Received crime " + crime.getCrimeId() + 
+                          " (" + crime.getType() + ") at location " + crime.getLocationId());
+    }
+
     // Add methods for unit tracking, assignment, etc.
 }

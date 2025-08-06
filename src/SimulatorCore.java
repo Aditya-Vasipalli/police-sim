@@ -47,7 +47,7 @@ public class SimulatorCore {
         this.policeManager = policeManager;
         this.crimeGenerator = crimeGenerator;
         this.pathfindingService = pathfindingService;
-        this.assignmentService = new CrimeAssignmentService(); // Temporarily no PathfindingService
+        this.assignmentService = new CrimeAssignmentService(); // Using simplified version for now
         
         // Initialize simulation state
         this.currentTick = 0;

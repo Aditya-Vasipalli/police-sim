@@ -1,5 +1,6 @@
 import algorithms.Dijkstra;
 import algorithms.AStar;
+import algorithms.FloydWarshall;
 import models.CityMapNode;
 import java.util.*;
 
@@ -338,5 +339,50 @@ public class PathfindingService {
             .limit(topN)
             .map(Map.Entry::getKey)
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    }
+    
+    /**
+     * Convert CityMap to Graph format for Floyd-Warshall algorithm
+     */
+    private models.Graph convertToGraph() {
+        models.Graph graph = new models.Graph();
+        
+        for (CityMapNode node : nodeMap.values()) {
+            for (CityMapNode.Edge edge : node.getAdjacentEdges()) {
+                graph.addEdge(node.getNodeId(), edge.getDestinationNode(), 
+                            edge.getDynamicWeight(node.getTrafficMultiplier()));
+            }
+        }
+        
+        return graph;
+    }
+    
+    /**
+     * Calculate all-pairs shortest paths using Floyd-Warshall algorithm
+     * Useful for precomputing distances between all node pairs
+     * @return FloydWarshall instance with computed distances
+     */
+    public FloydWarshall calculateAllPairsShortestPaths() {
+        models.Graph graph = convertToGraph();
+        return new FloydWarshall(graph);
+    }
+    
+    /**
+     * Get shortest path using precomputed Floyd-Warshall results
+     * @param floydWarshall Precomputed Floyd-Warshall instance
+     * @param start Start node
+     * @param end End node
+     * @return PathResult with shortest path
+     */
+    public PathResult getPathFromFloydWarshall(FloydWarshall floydWarshall, int start, int end) {
+        long startTime = System.nanoTime();
+        
+        List<Integer> path = floydWarshall.getShortestPath(start, end);
+        double distance = floydWarshall.getShortestDistance(start, end);
+        
+        long endTime = System.nanoTime();
+        long computationTime = (endTime - startTime) / 1_000_000; // Convert to milliseconds
+        
+        return new PathResult(path, distance, computationTime, "Floyd-Warshall", 0);
     }
 }
