@@ -6,6 +6,8 @@ public class Assignment {
     private int crimeId;
     private java.sql.Timestamp timeAssigned;
     private double responseTime;
+    private int assignmentTick;
+    private int completionTick;
     
     // Default constructor
     public Assignment() {
@@ -18,6 +20,19 @@ public class Assignment {
         this.crimeId = crimeId;
         this.timeAssigned = timeAssigned;
         this.responseTime = responseTime;
+        this.assignmentTick = -1; // Initialize with -1 to indicate not set
+        this.completionTick = -1; // Initialize with -1 to indicate not set
+    }
+
+    // Constructor with tick information
+    public Assignment(int assignId, int unitId, int crimeId, java.sql.Timestamp timeAssigned, double responseTime, int assignmentTick) {
+        this.assignId = assignId;
+        this.unitId = unitId;
+        this.crimeId = crimeId;
+        this.timeAssigned = timeAssigned;
+        this.responseTime = responseTime;
+        this.assignmentTick = assignmentTick;
+        this.completionTick = -1; // Initialize with -1 to indicate not set
     }
     
     // Getters
@@ -60,6 +75,29 @@ public class Assignment {
     
     public void setResponseTime(double responseTime) {
         this.responseTime = responseTime;
+    }
+    
+    public int getAssignmentTick() {
+        return assignmentTick;
+    }
+    
+    public void setAssignmentTick(int assignmentTick) {
+        this.assignmentTick = assignmentTick;
+    }
+    
+    public int getCompletionTick() {
+        return completionTick;
+    }
+    
+    public void setCompletionTick(int completionTick) {
+        this.completionTick = completionTick;
+        // Calculate response time in simulation minutes (assuming each tick = 1 minute)
+        if (this.assignmentTick >= 0 && completionTick >= 0) {
+            this.responseTime = (double)(completionTick - this.assignmentTick);
+            System.out.println("DEBUG: Assignment " + this.crimeId + " - Assignment tick: " + 
+                             this.assignmentTick + ", Completion tick: " + completionTick + 
+                             ", Response time: " + this.responseTime + " minutes");
+        }
     }
     
     @Override

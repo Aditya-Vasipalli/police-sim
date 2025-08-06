@@ -1,9 +1,11 @@
 // CityMap.java
 // Module 1: City Map & Environment
 // Responsible for loading and managing the city graph (adjacency list)
-// Enhanced to support pathfinding algorithms
+// Enhanced to support pathfinding algorithms and police station placement
 
 import models.CityMapNode;
+import algorithms.FloydWarshall;
+import models.Graph;
 import java.util.*;
 import java.io.*;
 
@@ -25,6 +27,7 @@ public class CityMap {
         this.totalNodes = 0;
         this.totalEdges = 0;
         
+        System.out.println("CityMap: Attempting to load map file: " + mapFile);
         loadCityMapFromFile(mapFile);
         calculateGraphStatistics();
     }
@@ -332,6 +335,168 @@ public class CityMap {
         }
         
         return visited.size() == totalNodes;
+    }
+    
+    /**
+     * Find optimal police station locations using Floyd-Warshall algorithm
+     * Stations are placed to minimize maximum distance to any location
+     */
+    public List<Integer> findOptimalPoliceStationLocations(int numStations) {
+        // Convert CityMap to Graph format for Floyd-Warshall
+        Graph graph = convertToGraph();
+        
+        // Run Floyd-Warshall to get all-pairs shortest paths
+        FloydWarshall floyd = new FloydWarshall(graph);
+        
+        // Find optimal station placement using Floyd-Warshall results
+        return findOptimalStationsUsingFloyd(floyd, numStations);
+    }
+    
+    /**
+     * Convert CityMap to Graph format for Floyd-Warshall algorithm
+     */
+    private Graph convertToGraph() {
+        Graph graph = new Graph();
+        
+        for (Map.Entry<Integer, CityMapNode> entry : nodes.entrySet()) {
+            int nodeId = entry.getKey();
+            CityMapNode node = entry.getValue();
+            
+            // Add all edges from this node
+            for (CityMapNode.Edge edge : node.getAdjacentEdges()) {
+                int neighbor = edge.getDestinationNode();
+                double weight = edge.getBaseWeight();
+                graph.addEdge(nodeId, neighbor, weight);
+            }
+        }
+        
+        return graph;
+    }
+    
+    /**
+     * Find optimal stations using Floyd-Warshall centrality analysis
+     */
+    private List<Integer> findOptimalStationsUsingFloyd(FloydWarshall floyd, int numStations) {
+        List<Integer> allNodes = new ArrayList<>(nodes.keySet());
+        Map<Integer, Double> centralityScores = new HashMap<>();
+        
+        // Calculate centrality scores for each node
+        for (Integer node : allNodes) {
+            double totalDistance = 0;
+            int reachableNodes = 0;
+            
+            for (Integer other : allNodes) {
+                if (!node.equals(other)) {
+                    double distance = floyd.getShortestDistance(node, other);
+                    if (distance < Double.POSITIVE_INFINITY) {
+                        totalDistance += distance;
+                        reachableNodes++;
+                    }
+                }
+            }
+            
+            // Lower average distance = higher centrality = better for police station
+            double centrality = reachableNodes > 0 ? totalDistance / reachableNodes : Double.MAX_VALUE;
+            centralityScores.put(node, centrality);
+        }
+        
+        // Sort nodes by centrality (lower scores = more central = better locations)
+        allNodes.sort((a, b) -> Double.compare(centralityScores.get(a), centralityScores.get(b)));
+        
+        // Use p-median approach for multiple stations
+        List<Integer> optimalStations = new ArrayList<>();
+        
+        if (numStations == 1) {
+            // Single station: choose most central location
+            optimalStations.add(allNodes.get(0));
+        } else {
+            // Multiple stations: use greedy approach with Floyd-Warshall distances
+            optimalStations = findMultipleStationsGreedy(floyd, allNodes, numStations);
+        }
+        
+        System.out.println("Floyd-Warshall optimal station placement:");
+        for (int i = 0; i < optimalStations.size(); i++) {
+            int station = optimalStations.get(i);
+            double centrality = centralityScores.get(station);
+            System.out.printf("  Station %d: Location %d (centrality: %.2f)%n", i + 1, station, centrality);
+        }
+        
+        return optimalStations;
+    }
+    
+    /**
+     * Greedy algorithm to find multiple station locations using Floyd-Warshall distances
+     */
+    private List<Integer> findMultipleStationsGreedy(FloydWarshall floyd, List<Integer> candidates, int numStations) {
+        List<Integer> stations = new ArrayList<>();
+        List<Integer> remainingNodes = new ArrayList<>(candidates);
+        
+        // First station: most central location
+        stations.add(candidates.get(0));
+        remainingNodes.remove(candidates.get(0));
+        
+        // Subsequent stations: maximize minimum distance coverage
+        for (int i = 1; i < numStations && !remainingNodes.isEmpty(); i++) {
+            int bestStation = -1;
+            double bestMinDistance = -1;
+            
+            for (Integer candidate : remainingNodes) {
+                // Find minimum distance from this candidate to existing stations
+                double minDistanceToStations = Double.POSITIVE_INFINITY;
+                
+                for (Integer existingStation : stations) {
+                    double distance = floyd.getShortestDistance(candidate, existingStation);
+                    minDistanceToStations = Math.min(minDistanceToStations, distance);
+                }
+                
+                // Choose candidate that maximizes minimum distance to existing stations
+                if (minDistanceToStations > bestMinDistance) {
+                    bestMinDistance = minDistanceToStations;
+                    bestStation = candidate;
+                }
+            }
+            
+            if (bestStation != -1) {
+                stations.add(bestStation);
+                remainingNodes.remove(Integer.valueOf(bestStation));
+            }
+        }
+        
+        return stations;
+    }
+    
+    /**
+     * Calculate coverage statistics for given station locations
+     */
+    public Map<String, Double> calculateStationCoverageStats(List<Integer> stationLocations) {
+        Graph graph = convertToGraph();
+        FloydWarshall floyd = new FloydWarshall(graph);
+        
+        Map<String, Double> stats = new HashMap<>();
+        List<Integer> allNodes = new ArrayList<>(nodes.keySet());
+        List<Double> minDistances = new ArrayList<>();
+        
+        // For each location, find distance to nearest station
+        for (Integer location : allNodes) {
+            double minDistance = Double.POSITIVE_INFINITY;
+            
+            for (Integer station : stationLocations) {
+                double distance = floyd.getShortestDistance(location, station);
+                minDistance = Math.min(minDistance, distance);
+            }
+            
+            if (minDistance < Double.POSITIVE_INFINITY) {
+                minDistances.add(minDistance);
+            }
+        }
+        
+        if (!minDistances.isEmpty()) {
+            stats.put("avgResponseDistance", minDistances.stream().mapToDouble(d -> d).average().orElse(0));
+            stats.put("maxResponseDistance", minDistances.stream().mapToDouble(d -> d).max().orElse(0));
+            stats.put("minResponseDistance", minDistances.stream().mapToDouble(d -> d).min().orElse(0));
+        }
+        
+        return stats;
     }
     
     @Override
