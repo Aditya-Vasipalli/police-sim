@@ -295,13 +295,16 @@ public class CrimeGenerator {
     // Private helper methods
     
     private int generateRandomLocationId() {
-        // In a real implementation, this would get valid location IDs from the city map
-        // For now, generating a random location ID between 1 and 100
-        // TODO: Update to use cityMap.getValidLocationIds() when CityMap is fully implemented
+        // Generate random location ID from available city map nodes
         if (cityMap != null) {
-            // This ensures the cityMap field is used to avoid warnings
-            // In the future, replace this with: return cityMap.getRandomValidLocationId();
+            // Get valid location IDs from the city map
+            Set<Integer> validLocations = cityMap.getAllNodes().keySet();
+            if (!validLocations.isEmpty()) {
+                List<Integer> locationList = new ArrayList<>(validLocations);
+                return locationList.get(ThreadLocalRandom.current().nextInt(locationList.size()));
+            }
         }
+        // Fallback: generate random location ID between 1 and 100
         return ThreadLocalRandom.current().nextInt(1, 101);
     }
     

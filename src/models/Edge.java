@@ -1,23 +1,23 @@
 package models;
 
-// This class is for the road between two places
+// This class represents a road/connection between two places in the city
 public class Edge {
-    private int destination;     // TODO: where the road goes
-    private double weight;       // TODO: how long the road is (like distance)
+    private int destination;     // The node where this edge leads
+    private double weight;       // The cost/distance of traversing this edge
 
     public Edge(int destination, double weight) {
-        // TODO: store road details
+        // Store the edge details
         this.destination = destination;
         this.weight = weight;
     }
 
     public int getDestination() {
-        // TODO: give the end point of the road
+        // Return the destination node of this edge
         return destination;
     }
 
     public double getWeight() {
-        // TODO: give the weight (like time/distance)
+        // Return the weight/cost of this edge
         return weight;
     }
 }

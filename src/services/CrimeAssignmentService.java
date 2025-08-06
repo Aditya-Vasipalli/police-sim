@@ -13,13 +13,10 @@ import java.sql.Timestamp;
  */
 public class CrimeAssignmentService {
     
-    // Note: PathfindingService integration disabled temporarily for compilation
-    // private PathfindingService pathfindingService;
     private database.AssignmentDAO assignmentDAO;
     private int nextAssignmentId = 1;
     
     public CrimeAssignmentService() {
-        // this.pathfindingService = pathfindingService;
         this.assignmentDAO = new database.AssignmentDAO();
     }
     
@@ -131,7 +128,7 @@ public class CrimeAssignmentService {
      * Calculate assignment cost (response time + priority weighting)
      */
     private double calculateAssignmentCost(Unit unit, Crime crime) {
-        // Simplified distance calculation (can be replaced with PathfindingService later)
+        // Simplified distance calculation for now - PathfindingService integration can be added later
         double distance = calculateSimpleDistance(unit.getCurrentLocationId(), crime.getLocationId());
         double responseTime = distance / 30.0; // Assume 30 km/h average speed
         

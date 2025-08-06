@@ -28,8 +28,8 @@ public class Main {
             CrimeGenerator crimeGenerator = new CrimeGenerator(cityMap);
             
             System.out.println("Initializing police manager...");
-            // TODO: Create stub police manager for now
-            PoliceManager policeManager = null; // Will be updated when Anushri's module is ready
+            // Initialize police manager with city map
+            PoliceManager policeManager = new PoliceManager(cityMap);
             
             System.out.println("Initializing simulation core...");
             SimulatorCore simulatorCore = new SimulatorCore(cityMap, policeManager, crimeGenerator, pathfindingService);
