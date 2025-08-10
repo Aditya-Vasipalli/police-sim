@@ -511,90 +511,106 @@ public class PoliceManager {
      * Process multiple pending crimes using Hungarian algorithm for optimal assignment
      */
     private void processPendingCrimesWithHungarian(List<Unit> availableUnits, int currentTick) {
-        System.out.println("Processing " + pendingCrimes.size() + " pending crimes with " + 
-                          availableUnits.size() + " available units using Hungarian algorithm");
-        
+        System.out.println("Processing " + pendingCrimes.size() + " pending crimes with station-based Hungarian algorithm");
+
         // Limit batch size for performance
         int batchSize = Math.min(10, Math.min(pendingCrimes.size(), availableUnits.size()));
         List<Crime> batchCrimes = pendingCrimes.subList(0, batchSize);
-        
-        // Find suitable units for each crime in batch
+
+        // Get police station locations
+        List<Integer> stationLocations = new ArrayList<>();
+        for (Unit unit : availableUnits) {
+            if (!stationLocations.contains(unit.getCurrentLocationId())) {
+                stationLocations.add(unit.getCurrentLocationId());
+            }
+        }
+
+        // For each crime, find nearest station(s) and suitable units at those stations
         Map<Crime, List<Unit>> suitableUnitsMap = new HashMap<>();
-        List<Unit> allSuitableUnits = new ArrayList<>();
-        
+        List<Unit> allStationSuitableUnits = new ArrayList<>();
+
         for (Crime crime : batchCrimes) {
+            // Find nearest station(s) to crime
+            int nearestStation = -1;
+            double minDist = Double.MAX_VALUE;
+            for (int stationLoc : stationLocations) {
+                var pathResult = pathfindingService.calculateShortestPath(stationLoc, crime.getLocationId());
+                if (pathResult.isValidPath() && pathResult.getDistance() < minDist) {
+                    minDist = pathResult.getDistance();
+                    nearestStation = stationLoc;
+                }
+            }
+            // Get available units at nearest station
+            List<Unit> stationUnits = getUnitsAtLocation(nearestStation);
+            // Filter suitable units
             List<Unit> suitable = new ArrayList<>();
-            for (Unit unit : availableUnits) {
-                if (findSuitableUnits(crime).contains(unit)) {
-                    suitable.add(unit);
-                    if (!allSuitableUnits.contains(unit)) {
-                        allSuitableUnits.add(unit);
+            String[] requiredCapabilities = getRequiredCapabilities(crime.getType());
+            for (Unit unit : stationUnits) {
+                for (String capability : requiredCapabilities) {
+                    if (unit.getCapabilities().equals(capability)) {
+                        suitable.add(unit);
+                        if (!allStationSuitableUnits.contains(unit)) {
+                            allStationSuitableUnits.add(unit);
+                        }
+                        break;
                     }
                 }
             }
             suitableUnitsMap.put(crime, suitable);
         }
-        
-        if (allSuitableUnits.isEmpty()) return;
-        
+
+        if (allStationSuitableUnits.isEmpty()) return;
+
         // Create cost matrix for Hungarian algorithm
-        int numUnits = Math.min(allSuitableUnits.size(), batchCrimes.size());
+        int numUnits = Math.min(allStationSuitableUnits.size(), batchCrimes.size());
         int numCrimes = batchCrimes.size();
-        
+
         double[][] costMatrix = new double[numUnits][numCrimes];
         int[] unitIds = new int[numUnits];
         int[] crimeIds = new int[numCrimes];
-        
+
         // Fill cost matrix
         for (int i = 0; i < numUnits; i++) {
-            Unit unit = allSuitableUnits.get(i);
+            Unit unit = allStationSuitableUnits.get(i);
             unitIds[i] = unit.getUnitId();
-            
             for (int j = 0; j < numCrimes; j++) {
                 Crime crime = batchCrimes.get(j);
                 crimeIds[j] = crime.getCrimeId();
-                
-                // Check if unit can handle this crime
                 List<Unit> suitableForCrime = suitableUnitsMap.get(crime);
                 if (suitableForCrime != null && suitableForCrime.contains(unit)) {
-                    // Calculate actual cost (simplified - no specialization bonus)
                     var pathResult = pathfindingService.calculateShortestPath(
                         unit.getCurrentLocationId(), crime.getLocationId());
-                    
                     double baseCost = pathResult.isValidPath() ? pathResult.getDistance() : 1000.0;
                     costMatrix[i][j] = Math.max(0.1, baseCost);
                 } else {
-                    // Very high cost for unsuitable unit-crime pairs
                     costMatrix[i][j] = 10000.0;
                 }
             }
         }
-        
+
         // Solve using Hungarian algorithm
         List<HungarianAlgorithm.Assignment> assignments = 
             HungarianAlgorithm.solve(costMatrix, unitIds, crimeIds);
-        
+
         // Execute assignments
         List<Crime> assignedCrimes = new ArrayList<>();
         double totalCost = 0.0;
-        
+
         for (HungarianAlgorithm.Assignment assignment : assignments) {
-            if (assignment.getCost() < 1000.0) { // Valid assignment (not dummy/unsuitable)
+            if (assignment.getCost() < 1000.0) {
                 Unit unit = allUnits.get(assignment.getUnitId());
                 Crime crime = findCrimeById(assignment.getCrimeId(), batchCrimes);
-                
                 if (unit != null && crime != null && unit.getStatus().equals("AVAILABLE")) {
                     dispatchUnitToCrime(unit, crime, currentTick);
                     assignedCrimes.add(crime);
                     totalCost += assignment.getCost();
-                    
                     System.out.println("Hungarian batch assignment: Unit " + unit.getUnitId() + 
                                      " (" + unit.getCapabilities() + ") -> Crime " + crime.getCrimeId() + 
                                      " (cost: " + String.format("%.2f", assignment.getCost()) + ")");
                 }
             }
         }
-        
+
         // Remove assigned crimes from pending queue
         pendingCrimes.removeAll(assignedCrimes);
         
