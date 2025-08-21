@@ -10,6 +10,12 @@ import java.util.*;
 import java.io.*;
 
 public class CityMap {
+    /**
+     * Returns a Graph representation of the city map for visualization
+     */
+    public Graph getGraph() {
+        return convertToGraph();
+    }
     
     private Map<Integer, CityMapNode> nodes;
     private int totalNodes;

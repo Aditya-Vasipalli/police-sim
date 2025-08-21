@@ -10,38 +10,52 @@
 //   (Console output: Simulation started, events processed, summary printed)
 
 import java.util.Scanner;
+import java.util.Arrays;
+import models.Graph;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("=== Police Response Time Simulator ===");
-        System.out.println("Initializing simulation modules...");
-        
-        try {
-            // Initialize core modules
-            System.out.println("Loading city map...");
-            CityMap cityMap = new CityMap("big_city_map.csv");
-            System.out.println("Loaded city map with " + cityMap.getTotalNodes() + " nodes and " + cityMap.getTotalEdges() + " edges");
-            
-            System.out.println("Initializing pathfinding service...");
-            PathfindingService pathfindingService = new PathfindingService(cityMap);
-            
-            System.out.println("Initializing crime generator...");
-            CrimeGenerator crimeGenerator = new CrimeGenerator(cityMap);
-            
-            System.out.println("Initializing simulation core with station-based police...");
-            // Use the new factory method that properly distributes police at stations
-            SimulatorCore simulatorCore = SimulatorCore.createWithStationBasedPolice(cityMap, crimeGenerator, pathfindingService);
-            
-            System.out.println("All modules initialized successfully!");
-            System.out.println("=====================================");
-            
-            // Interactive menu
-            runInteractiveMode(simulatorCore);
-            
-        } catch (Exception e) {
-            System.err.println("Error initializing simulation: " + e.getMessage());
-            e.printStackTrace();
-        }
+            // If "gui" argument is provided, launch GUI
+            boolean useGUI = Arrays.asList(args).contains("gui");
+            System.out.println("Args received: " + Arrays.toString(args));
+            System.out.println("Use GUI: " + useGUI);
+            if (useGUI) {
+                System.out.println("Launching GUI mode...");
+                try {
+                    CityMap cityMap = new CityMap("big_city_map.csv");
+                    // GraphVisualizer expects a Graph, so pass cityMap.getGraph() or similar
+                    Graph cityGraph = cityMap.getGraph();
+                    javax.swing.SwingUtilities.invokeLater(() -> {
+                        System.out.println("Creating GUI window...");
+                        new gui.PoliceSimulatorGUI(cityGraph).setVisible(true);
+                        System.out.println("GUI window should be visible now.");
+                    });
+                    System.out.println("GUI launch completed.");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } else {
+                System.out.println("=== Police Response Time Simulator ===");
+                System.out.println("Initializing simulation modules...");
+                try {
+                    // ...existing code...
+                    System.out.println("Loading city map...");
+                    CityMap cityMap = new CityMap("big_city_map.csv");
+                    System.out.println("Loaded city map with " + cityMap.getTotalNodes() + " nodes and " + cityMap.getTotalEdges() + " edges");
+                    System.out.println("Initializing pathfinding service...");
+                    PathfindingService pathfindingService = new PathfindingService(cityMap);
+                    System.out.println("Initializing crime generator...");
+                    CrimeGenerator crimeGenerator = new CrimeGenerator(cityMap);
+                    System.out.println("Initializing simulation core with station-based police...");
+                    SimulatorCore simulatorCore = SimulatorCore.createWithStationBasedPolice(cityMap, crimeGenerator, pathfindingService);
+                    System.out.println("All modules initialized successfully!");
+                    System.out.println("=====================================");
+                    runInteractiveMode(simulatorCore);
+                } catch (Exception e) {
+                    System.err.println("Error initializing simulation: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
     }
     
     /**
