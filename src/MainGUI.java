@@ -3,7 +3,6 @@
 // Separates GUI from console application
 
 import javax.swing.*;
-import java.awt.*;
 
 public class MainGUI {
     public static void main(String[] args) {
@@ -26,14 +25,15 @@ public class MainGUI {
             CrimeGenerator crimeGenerator = new CrimeGenerator(cityMap);
             
             System.out.println("Initializing simulation core with station-based police...");
-            SimulatorCore simulatorCore = SimulatorCore.createWithStationBasedPolice(cityMap, crimeGenerator, pathfindingService);
+            // Create simulator core for proper initialization
+            SimulatorCore.createWithStationBasedPolice(cityMap, crimeGenerator, pathfindingService);
             
             System.out.println("All modules initialized successfully!");
             System.out.println("Launching holographic interface...");
             
             // Launch GUI in Event Dispatch Thread
             SwingUtilities.invokeLater(() -> {
-                gui.HolographicPoliceGUI gui = new gui.HolographicPoliceGUI(cityMap, simulatorCore);
+                gui.HolographicPoliceGUI gui = new gui.HolographicPoliceGUI(cityMap);
                 gui.setVisible(true);
                 System.out.println("Holographic interface online!");
             });
