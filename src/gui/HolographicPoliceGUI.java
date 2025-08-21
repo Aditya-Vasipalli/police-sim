@@ -20,12 +20,18 @@ public class HolographicPoliceGUI extends JFrame {
     private JPanel controlPanel;
     private JTextArea logArea;
     private Object cityMap;  // CityMap from default package
+    private Object pathfindingService;  // PathfindingService from default package
     private javax.swing.Timer animationTimer;  // Specify javax.swing.Timer
     
     // Animation and simulation state
     private List<AnimatedCrime> activeCrimes = new ArrayList<>();
     private List<AnimatedUnit> animatedUnits = new ArrayList<>();
     private Map<Integer, List<Integer>> activeAStarPaths = new HashMap<>();
+    
+    // Persistent unit management
+    private List<PoliceUnit> allPoliceUnits = new ArrayList<>();
+    private Map<Integer, List<PoliceUnit>> stationUnits = new HashMap<>();
+    private int[] policeStations = {45, 145, 135, 125, 113, 99}; // Floyd-Warshall stations
     
     // Holographic colors
     private static final Color HOLO_BLUE = new Color(0, 150, 255, 180);
@@ -39,7 +45,21 @@ public class HolographicPoliceGUI extends JFrame {
     private static final Color STATION_BLUE = new Color(0, 100, 255, 220);
     private static final Color NODE_GREY = new Color(128, 128, 128, 150);
 
-    // Inner classes for animation
+    // Inner classes for animation and units
+    private static class PoliceUnit {
+        int unitId;
+        String unitType;
+        int homeStationId;
+        boolean isAvailable;
+        
+        PoliceUnit(int unitId, String unitType, int homeStationId) {
+            this.unitId = unitId;
+            this.unitType = unitType;
+            this.homeStationId = homeStationId;
+            this.isAvailable = true;
+        }
+    }
+    
     private static class AnimatedCrime {
         int nodeId;
         String crimeType;
@@ -57,22 +77,63 @@ public class HolographicPoliceGUI extends JFrame {
         List<Integer> currentPath;
         int currentPathIndex;
         int targetCrimeNodeId;
+        int homeStationId;
         float pathProgress;
+        boolean returningHome;
+        boolean workCompleted;
         
-        AnimatedUnit(int unitId, String unitType, List<Integer> path, int targetCrimeNodeId) {
+        AnimatedUnit(int unitId, String unitType, List<Integer> path, int targetCrimeNodeId, int homeStationId) {
             this.unitId = unitId;
             this.currentPath = new ArrayList<>(path);
             this.currentPathIndex = 0;
             this.targetCrimeNodeId = targetCrimeNodeId;
+            this.homeStationId = homeStationId;
             this.pathProgress = 0;
+            this.returningHome = false;
+            this.workCompleted = false;
         }
     }
 
-    public HolographicPoliceGUI(Object cityMap) {
+    public HolographicPoliceGUI(Object cityMap, Object pathfindingService) {
         this.cityMap = cityMap;
+        this.pathfindingService = pathfindingService;
         
+        // Verify PathfindingService is properly connected
+        if (pathfindingService != null) {
+            System.out.println("PathfindingService successfully connected to GUI");
+        } else {
+            System.out.println("WARNING: PathfindingService is null in GUI!");
+        }
+        
+        initializePoliceUnits();
         initializeHolographicGUI();
         setupAnimationTimer();
+    }
+    
+    private void initializePoliceUnits() {
+        // Create 30 persistent police units distributed across stations
+        String[] unitTypes = {"PATROL", "PATROL", "PATROL", "EMERGENCY", "SWAT", "DETECTIVE"};
+        int unitId = 1;
+        
+        for (int stationId : policeStations) {
+            stationUnits.put(stationId, new ArrayList<>());
+            
+            // Add 5 units per station (30 total across 6 stations)
+            for (int i = 0; i < 5; i++) {
+                String unitType = unitTypes[i % unitTypes.length];
+                PoliceUnit unit = new PoliceUnit(unitId++, unitType, stationId);
+                allPoliceUnits.add(unit);
+                stationUnits.get(stationId).add(unit);
+            }
+        }
+        
+        logArea = new JTextArea(); // Initialize logArea first
+        if (logArea != null) {
+            logArea.append("Initialized " + allPoliceUnits.size() + " police units across " + policeStations.length + " stations\n");
+            for (int stationId : policeStations) {
+                logArea.append("Station " + stationId + ": " + stationUnits.get(stationId).size() + " units\n");
+            }
+        }
     }
     
     private void initializeHolographicGUI() {
@@ -81,8 +142,13 @@ public class HolographicPoliceGUI extends JFrame {
         setLayout(new BorderLayout());
         setBackground(BACKGROUND_DARK);
         
-        // Create holographic map panel
+        // Create holographic map panel that fits on screen
         mapPanel = new HolographicMapPanel();
+        mapPanel.setPreferredSize(new Dimension(1200, 800)); // Reasonable screen size
+        mapPanel.setBackground(BACKGROUND_DARK);
+        mapPanel.setBorder(BorderFactory.createLineBorder(HOLO_CYAN, 1));
+        
+        // Add directly to center without scroll pane
         add(mapPanel, BorderLayout.CENTER);
         
         // Create futuristic control panel
@@ -275,44 +341,115 @@ public class HolographicPoliceGUI extends JFrame {
     }
     
     private void simulateUnitDispatch(AnimatedCrime crime) {
-        // Find nearest police station (demo: use stations 0, 3, or random)
-        Random rand = new Random();
-        int[] stations = {0, 3, 45, 99}; // Mix of demo and real stations
-        int stationNode = stations[rand.nextInt(stations.length)];
+        // Find available unit from nearest police station
+        PoliceUnit availableUnit = findNearestAvailableUnit(crime.nodeId);
         
-        // Create A* path from station to crime
-        List<Integer> path = generateDemoPath(stationNode, crime.nodeId);
-        
-        // Create animated unit
-        AnimatedUnit unit = new AnimatedUnit(rand.nextInt(31) + 1, "PATROL", path, crime.nodeId);
-        animatedUnits.add(unit);
-        
-        // Store path for visualization
-        activeAStarPaths.put(unit.unitId, path);
-        
-        logArea.append("UNIT " + unit.unitId + " DISPATCHED: " + stationNode + " -> " + crime.nodeId + "\n");
-        logArea.append("A* PATH: " + path + "\n");
-    }
-    
-    private List<Integer> generateDemoPath(int start, int end) {
-        // Generate a demo path for visualization
-        // In real implementation, this would use A* algorithm
-        List<Integer> path = new ArrayList<>();
-        path.add(start);
-        
-        // Add some intermediate nodes for demonstration
-        Random rand = new Random();
-        int steps = 3 + rand.nextInt(4); // 3-6 steps
-        int current = start;
-        
-        for (int i = 0; i < steps; i++) {
-            int next = Math.abs(current + rand.nextInt(20) - 10) % 133;
-            path.add(next);
-            current = next;
+        if (availableUnit == null) {
+            logArea.append("NO AVAILABLE UNITS for crime at node " + crime.nodeId + "\n");
+            scrollLogToBottom();
+            return;
         }
         
-        path.add(end);
-        return path;
+        // Mark unit as unavailable
+        availableUnit.isAvailable = false;
+        
+        // Create A* path from station to crime using actual road connections
+        List<Integer> path = generatePathUsingConnections(availableUnit.homeStationId, crime.nodeId);
+        
+        // Create animated unit with home station
+        AnimatedUnit animatedUnit = new AnimatedUnit(availableUnit.unitId, availableUnit.unitType, path, crime.nodeId, availableUnit.homeStationId);
+        animatedUnits.add(animatedUnit);
+        
+        // Store path for visualization
+        activeAStarPaths.put(availableUnit.unitId, path);
+        
+        logArea.append("UNIT " + availableUnit.unitId + " (" + availableUnit.unitType + ") DISPATCHED from Station " + availableUnit.homeStationId + " -> Crime " + crime.nodeId + "\n");
+        logArea.append("PATH: " + path + "\n");
+        
+        // Update station unit count
+        updateStationUnitCounts();
+        scrollLogToBottom();
+    }
+    
+    private PoliceUnit findNearestAvailableUnit(int crimeNodeId) {
+        // Find the nearest station with available units
+        PoliceUnit bestUnit = null;
+        double shortestDistance = Double.MAX_VALUE;
+        
+        for (int stationId : policeStations) {
+            List<PoliceUnit> unitsAtStation = stationUnits.get(stationId);
+            if (unitsAtStation == null) continue;
+            
+            // Find available unit at this station
+            PoliceUnit availableUnit = null;
+            for (PoliceUnit unit : unitsAtStation) {
+                if (unit.isAvailable) {
+                    availableUnit = unit;
+                    break;
+                }
+            }
+            
+            if (availableUnit != null) {
+                // Calculate distance from station to crime (simplified)
+                Map<Integer, Point2D.Double> positions = mapPanel.getNodePositions();
+                if (positions != null && positions.containsKey(stationId) && positions.containsKey(crimeNodeId)) {
+                    Point2D.Double stationPos = positions.get(stationId);
+                    Point2D.Double crimePos = positions.get(crimeNodeId);
+                    double distance = Math.sqrt(Math.pow(stationPos.x - crimePos.x, 2) + Math.pow(stationPos.y - crimePos.y, 2));
+                    
+                    if (distance < shortestDistance) {
+                        shortestDistance = distance;
+                        bestUnit = availableUnit;
+                    }
+                }
+            }
+        }
+        
+        return bestUnit;
+    }
+    
+    private void updateStationUnitCounts() {
+        // This will be called to update the display of available units
+        for (int stationId : policeStations) {
+            List<PoliceUnit> unitsAtStation = stationUnits.get(stationId);
+            if (unitsAtStation != null) {
+                // Station unit counts updated internally
+            }
+        }
+    }
+    
+    private List<Integer> generatePathUsingConnections(int start, int end) {
+        // Use the REAL PathfindingService that has actual road connections
+        logArea.append("USING REAL PATHFINDING SERVICE from " + start + " to " + end + "\n");
+        
+        try {
+            if (pathfindingService != null) {
+                Method findPathMethod = pathfindingService.getClass().getMethod("calculatePoliceNavigationPath", int.class, int.class);
+                Object pathResult = findPathMethod.invoke(pathfindingService, start, end);
+                
+                if (pathResult != null) {
+                    Method getPathMethod = pathResult.getClass().getMethod("getPath");
+                    Object pathObj = getPathMethod.invoke(pathResult);
+                    
+                    if (pathObj instanceof List) {
+                        @SuppressWarnings("unchecked")
+                        List<Integer> realPath = (List<Integer>) pathObj;
+                        if (!realPath.isEmpty() && realPath.size() > 1) {
+                            logArea.append("SUCCESS: REAL ROAD PATH: " + realPath + "\n");
+                            return realPath;
+                        }
+                    }
+                }
+            }
+            logArea.append("ERROR: PathfindingService not available or returned empty path\n");
+        } catch (Exception e) {
+            logArea.append("ERROR: PathfindingService failed: " + e.getMessage() + "\n");
+        }
+        
+        // If real pathfinding fails, return direct path (air travel)
+        List<Integer> directPath = Arrays.asList(start, end);
+        logArea.append("FALLBACK: DIRECT AIR PATH (no roads): " + directPath + "\n");
+        return directPath;
     }
     
     private void scrollLogToBottom() {
@@ -325,6 +462,10 @@ public class HolographicPoliceGUI extends JFrame {
     private class HolographicMapPanel extends JPanel {
         private Map<Integer, Point2D.Double> nodePositions;
         private float animationPhase = 0;
+        
+        public Map<Integer, Point2D.Double> getNodePositions() {
+            return nodePositions;
+        }
         
         public HolographicMapPanel() {
             setBackground(BACKGROUND_DARK);
@@ -339,6 +480,9 @@ public class HolographicPoliceGUI extends JFrame {
                     }
                 }
             });
+            
+            // Initialize positions immediately for screen-fit layout
+            calculateNodePositions();
             
             // Add mouse listener for interaction
             addMouseMotionListener(new java.awt.event.MouseMotionListener() {
@@ -356,8 +500,22 @@ public class HolographicPoliceGUI extends JFrame {
             addMouseListener(new java.awt.event.MouseAdapter() {
                 @Override
                 public void mouseClicked(java.awt.event.MouseEvent e) {
-                    // Find clicked node and show details
                     Point2D.Double clickPoint = new Point2D.Double(e.getX(), e.getY());
+                    
+                    // First check if we clicked on a moving unit
+                    for (AnimatedUnit unit : animatedUnits) {
+                        Point2D.Double unitPos = calculateUnitPosition(unit);
+                        if (unitPos != null) {
+                            double distance = Math.sqrt(Math.pow(clickPoint.x - unitPos.x, 2) + 
+                                                       Math.pow(clickPoint.y - unitPos.y, 2));
+                            if (distance < 12) { // Within 12 pixels of unit
+                                unitClicked(unit);
+                                return; // Don't check nodes if we clicked a unit
+                            }
+                        }
+                    }
+                    
+                    // Then check for clicked nodes
                     for (Map.Entry<Integer, Point2D.Double> entry : nodePositions.entrySet()) {
                         Point2D.Double nodePos = entry.getValue();
                         double distance = Math.sqrt(Math.pow(clickPoint.x - nodePos.x, 2) + 
@@ -371,17 +529,129 @@ public class HolographicPoliceGUI extends JFrame {
             });
         }
         
-        private void nodeClicked(Integer nodeId) {
-            if (isPoliceStation(nodeId)) {
-                logArea.append("POLICE STATION SELECTED: Node " + nodeId + "\n");
-                // TODO: Show units at this station
-            } else if (isCrimeLocation(nodeId)) {
-                AnimatedCrime crime = findCrimeAtNode(nodeId);
-                if (crime != null) {
-                    logArea.append("CRIME SELECTED: " + crime.crimeType + " (" + crime.severity + ") at Node " + nodeId + "\n");
+        private void unitClicked(AnimatedUnit unit) {
+            // Find the corresponding PoliceUnit for detailed info
+            PoliceUnit policeUnit = null;
+            for (PoliceUnit pUnit : allPoliceUnits) {
+                if (pUnit.unitId == unit.unitId) {
+                    policeUnit = pUnit;
+                    break;
                 }
+            }
+            
+            logArea.append("=== POLICE UNIT " + unit.unitId + " ===\n");
+            if (policeUnit != null) {
+                logArea.append("Type: " + policeUnit.unitType + "\n");
+                logArea.append("Home Station: " + policeUnit.homeStationId + "\n");
+                logArea.append("Status: " + (policeUnit.isAvailable ? "AVAILABLE" : "ON MISSION") + "\n");
+            }
+            
+            if (unit.returningHome) {
+                logArea.append("Current Action: RETURNING TO STATION\n");
+                logArea.append("Destination: Station " + unit.homeStationId + "\n");
+            } else if (unit.workCompleted) {
+                logArea.append("Current Action: MISSION COMPLETED\n");
+                logArea.append("Target: Crime Scene " + unit.targetCrimeNodeId + "\n");
             } else {
-                logArea.append("NODE SELECTED: " + nodeId + "\n");
+                logArea.append("Current Action: RESPONDING TO CRIME\n");
+                logArea.append("Target: Crime Scene " + unit.targetCrimeNodeId + "\n");
+            }
+            
+            // Show current path progress
+            logArea.append("Path Progress: " + (unit.currentPathIndex + 1) + "/" + unit.currentPath.size() + " nodes\n");
+            if (unit.currentPathIndex < unit.currentPath.size()) {
+                logArea.append("Current Node: " + unit.currentPath.get(unit.currentPathIndex) + "\n");
+            }
+            
+            // Show remaining path
+            if (unit.currentPathIndex < unit.currentPath.size() - 1) {
+                logArea.append("Remaining Path: ");
+                for (int i = unit.currentPathIndex + 1; i < unit.currentPath.size(); i++) {
+                    logArea.append(String.valueOf(unit.currentPath.get(i)));
+                    if (i < unit.currentPath.size() - 1) logArea.append(" -> ");
+                }
+                logArea.append("\n");
+            }
+            
+            logArea.append("========================\n");
+            scrollLogToBottom();
+        }
+        
+        private void nodeClicked(Integer nodeId) {
+            try {
+                // Get detailed node information from cityMap
+                Method getAllNodesMethod = cityMap.getClass().getMethod("getAllNodes");
+                Object nodesMap = getAllNodesMethod.invoke(cityMap);
+                
+                if (nodesMap instanceof Map) {
+                    Map<?, ?> nodes = (Map<?, ?>) nodesMap;
+                    Object nodeObj = nodes.get(nodeId);
+                    
+                    if (nodeObj != null) {
+                        // Get node coordinates
+                        Method getXMethod = nodeObj.getClass().getMethod("getX");
+                        Method getYMethod = nodeObj.getClass().getMethod("getY");
+                        double x = (Double) getXMethod.invoke(nodeObj);
+                        double y = (Double) getYMethod.invoke(nodeObj);
+                        
+                        // Get adjacent connections
+                        Method getAdjacentEdgesMethod = nodeObj.getClass().getMethod("getAdjacentEdges");
+                        Object edges = getAdjacentEdgesMethod.invoke(nodeObj);
+                        int connectionCount = 0;
+                        if (edges instanceof List) {
+                            connectionCount = ((List<?>) edges).size();
+                        }
+                        
+                        if (isPoliceStation(nodeId)) {
+                            logArea.append("=== POLICE STATION " + nodeId + " ===\n");
+                            logArea.append("Location: (" + String.format("%.2f", x) + ", " + String.format("%.2f", y) + ")\n");
+                            logArea.append("Connections: " + connectionCount + " roads\n");
+                            logArea.append("Status: OPERATIONAL\n");
+                            
+                            // Count available units at this station
+                            List<PoliceUnit> stationUnitsAtNode = stationUnits.get(nodeId);
+                            int availableUnits = 0;
+                            int onMissionUnits = 0;
+                            
+                            if (stationUnitsAtNode != null) {
+                                availableUnits = (int) stationUnitsAtNode.stream().filter(unit -> unit.isAvailable).count();
+                                onMissionUnits = (int) stationUnitsAtNode.stream().filter(unit -> !unit.isAvailable).count();
+                            }
+                            
+                            logArea.append("Available Units: " + availableUnits + "\n");
+                            logArea.append("Units on Mission: " + onMissionUnits + "\n");
+                            logArea.append("Total Station Capacity: " + (availableUnits + onMissionUnits) + "\n");
+                            
+                        } else if (isCrimeLocation(nodeId)) {
+                            AnimatedCrime crime = findCrimeAtNode(nodeId);
+                            if (crime != null) {
+                                logArea.append("=== ACTIVE CRIME SCENE " + nodeId + " ===\n");
+                                logArea.append("Type: " + crime.crimeType + "\n");
+                                logArea.append("Severity: " + crime.severity + "\n");
+                                logArea.append("Location: (" + String.format("%.2f", x) + ", " + String.format("%.2f", y) + ")\n");
+                                logArea.append("Connections: " + connectionCount + " roads\n");
+                                
+                                // Check if units are responding
+                                long respondingUnits = animatedUnits.stream()
+                                    .filter(unit -> unit.targetCrimeNodeId == nodeId)
+                                    .count();
+                                logArea.append("Responding Units: " + respondingUnits + "\n");
+                            }
+                        } else {
+                            logArea.append("=== INTERSECTION " + nodeId + " ===\n");
+                            logArea.append("Location: (" + String.format("%.2f", x) + ", " + String.format("%.2f", y) + ")\n");
+                            logArea.append("Connections: " + connectionCount + " roads\n");
+                            logArea.append("Status: CLEAR\n");
+                        }
+                        logArea.append("========================\n");
+                    } else {
+                        logArea.append("NODE " + nodeId + ": No detailed information available\n");
+                    }
+                } else {
+                    logArea.append("NODE " + nodeId + ": Map data not accessible\n");
+                }
+            } catch (Exception e) {
+                logArea.append("NODE " + nodeId + ": Error retrieving information (" + e.getMessage() + ")\n");
             }
             scrollLogToBottom();
         }
@@ -427,22 +697,18 @@ public class HolographicPoliceGUI extends JFrame {
                     }
                     
                     if (hasValidCoords && maxX > minX && maxY > minY) {
-                        // Scale to fit panel with margin
-                        double margin = 50;
-                        int panelWidth = Math.max(getWidth(), 1000);  // Fallback minimum size
-                        int panelHeight = Math.max(getHeight(), 600);
-                        double availableWidth = panelWidth - 2 * margin;
-                        double availableHeight = panelHeight - 2 * margin;
-                        
-                        // Ensure minimum size
-                        if (availableWidth < 200) availableWidth = 800;
-                        if (availableHeight < 200) availableHeight = 500;
+                        // Scale to fit panel that fits on screen
+                        double margin = 50;  // Smaller margin for screen fit
+                        int mapWidth = 1200;  // Fit on screen size
+                        int mapHeight = 800;  // Fit on screen size
+                        double availableWidth = mapWidth - 2 * margin;
+                        double availableHeight = mapHeight - 2 * margin;
                         
                         double scaleX = availableWidth / (maxX - minX);
                         double scaleY = availableHeight / (maxY - minY);
                         double scale = Math.min(scaleX, scaleY);
                         
-                        logArea.append("Scaling city map: " + nodes.size() + " nodes, scale=" + String.format("%.2f", scale) + "\n");
+                        logArea.append("Scaling city map to fit screen: " + nodes.size() + " nodes, scale=" + String.format("%.2f", scale) + "\n");
                         
                         for (Map.Entry<?, ?> entry : nodes.entrySet()) {
                             try {
@@ -479,35 +745,40 @@ public class HolographicPoliceGUI extends JFrame {
         }
         
         private void createDemoNodeLayout() {
-            // Create a more extensive demo layout for testing that fills the screen
+            // Create a demo layout that fits perfectly on screen
             Random rand = new Random(42); // Fixed seed for consistent layout
             
-            // Use panel dimensions or fallback values
-            int panelWidth = Math.max(getWidth(), 1000);
-            int panelHeight = Math.max(getHeight(), 600);
+            // Use screen-fit area
+            int mapWidth = 1200;   // Fit on screen size
+            int mapHeight = 800;   // Fit on screen size
             
-            int margin = 50;
-            int usableWidth = panelWidth - 2 * margin;
-            int usableHeight = panelHeight - 2 * margin;
+            int margin = 50;  // Smaller margin
+            int usableWidth = mapWidth - 2 * margin;
+            int usableHeight = mapHeight - 2 * margin;
             
-            logArea.append("Creating demo layout: " + usableWidth + "x" + usableHeight + " area\n");
+            logArea.append("Creating screen-fit demo layout: " + usableWidth + "x" + usableHeight + " area\n");
             
-            // Create nodes in a more natural distribution
+            // Create nodes in a more natural distribution with better spacing
             for (int i = 0; i < 133; i++) { // Match city map size
-                // Create a more organic layout instead of strict grid
-                double angle = (i * 2.4) % (2 * Math.PI); // Spiral pattern
-                double radius = 50 + (i * 3) % Math.min(usableWidth, usableHeight) / 3;
+                // Create multiple clusters to simulate city districts
+                int cluster = i % 4; // 4 different city districts
+                double clusterCenterX = margin + (cluster % 2) * (usableWidth / 2) + usableWidth / 4;
+                double clusterCenterY = margin + (cluster / 2) * (usableHeight / 2) + usableHeight / 4;
                 
-                double baseX = margin + usableWidth / 2 + Math.cos(angle) * radius;
-                double baseY = margin + usableHeight / 2 + Math.sin(angle) * radius;
+                // Add some spiral pattern within each cluster
+                double angle = (i * 1.8) % (2 * Math.PI);
+                double radius = 30 + (i * 2) % 150; // Vary radius within cluster
                 
-                // Add some randomness for natural look
-                double x = baseX + (rand.nextDouble() - 0.5) * 60;
-                double y = baseY + (rand.nextDouble() - 0.5) * 60;
+                double baseX = clusterCenterX + Math.cos(angle) * radius;
+                double baseY = clusterCenterY + Math.sin(angle) * radius;
+                
+                // Add randomness for natural look
+                double x = baseX + (rand.nextDouble() - 0.5) * 80;
+                double y = baseY + (rand.nextDouble() - 0.5) * 80;
                 
                 // Ensure nodes stay within bounds
-                x = Math.max(margin, Math.min(panelWidth - margin, x));
-                y = Math.max(margin, Math.min(panelHeight - margin, y));
+                x = Math.max(margin, Math.min(mapWidth - margin, x));
+                y = Math.max(margin, Math.min(mapHeight - margin, y));
                 
                 nodePositions.put(i, new Point2D.Double(x, y));
             }
@@ -519,6 +790,76 @@ public class HolographicPoliceGUI extends JFrame {
             animationPhase += 0.1f;
             if (animationPhase > 2 * Math.PI) {
                 animationPhase = 0;
+            }
+            
+            // Update unit animations
+            Iterator<AnimatedUnit> unitIterator = animatedUnits.iterator();
+            while (unitIterator.hasNext()) {
+                AnimatedUnit unit = unitIterator.next();
+                
+                if (!unit.returningHome && !unit.workCompleted) {
+                    // Moving towards crime - smooth movement speed
+                    unit.pathProgress += 0.02f; // Faster smooth movement speed
+                    
+                    if (unit.pathProgress >= 1.0f) {
+                        // Reached current segment, move to next
+                        unit.currentPathIndex++;
+                        unit.pathProgress = 0.0f;
+                        
+                        if (unit.currentPathIndex >= unit.currentPath.size() - 1) {
+                            // Reached crime location
+                            unit.workCompleted = true;
+                            logArea.append("UNIT " + unit.unitId + " ARRIVED AT CRIME SCENE " + unit.targetCrimeNodeId + "\n");
+                            
+                            // Remove the crime since it's been handled
+                            activeCrimes.removeIf(crime -> crime.nodeId == unit.targetCrimeNodeId);
+                            
+                            // Start return journey after a brief pause
+                            javax.swing.Timer returnTimer = new javax.swing.Timer(2000, e -> {
+                                // Calculate return path using real connections
+                                List<Integer> returnPath = generatePathUsingConnections(unit.targetCrimeNodeId, unit.homeStationId);
+                                unit.currentPath = returnPath;
+                                unit.currentPathIndex = 0;
+                                unit.pathProgress = 0.0f;
+                                unit.returningHome = true;
+                                logArea.append("UNIT " + unit.unitId + " RETURNING TO STATION " + unit.homeStationId + "\n");
+                                scrollLogToBottom();
+                                ((javax.swing.Timer)e.getSource()).stop();
+                            });
+                            returnTimer.setRepeats(false);
+                            returnTimer.start();
+                            
+                            scrollLogToBottom();
+                        }
+                    }
+                } else if (unit.returningHome) {
+                    // Moving back to station - smooth movement speed
+                    unit.pathProgress += 0.02f; // Same smooth movement speed
+                    
+                    if (unit.pathProgress >= 1.0f) {
+                        // Reached current segment, move to next
+                        unit.currentPathIndex++;
+                        unit.pathProgress = 0.0f;
+                        
+                        if (unit.currentPathIndex >= unit.currentPath.size() - 1) {
+                            // Reached home station - mark unit as available again
+                            logArea.append("UNIT " + unit.unitId + " RETURNED TO STATION " + unit.homeStationId + "\n");
+                            
+                            // Find the corresponding PoliceUnit and mark as available
+                            for (PoliceUnit policeUnit : allPoliceUnits) {
+                                if (policeUnit.unitId == unit.unitId) {
+                                    policeUnit.isAvailable = true;
+                                    break;
+                                }
+                            }
+                            
+                            activeAStarPaths.remove(unit.unitId);
+                            unitIterator.remove();
+                            updateStationUnitCounts();
+                            scrollLogToBottom();
+                        }
+                    }
+                }
             }
         }
         
@@ -592,12 +933,15 @@ public class HolographicPoliceGUI extends JFrame {
                             if (edges instanceof List) {
                                 List<?> edgeList = (List<?>) edges;
                                 for (Object edge : edgeList) {
-                                    Method getDestinationMethod = edge.getClass().getMethod("getDestinationNode");
-                                    Integer destNodeId = (Integer) getDestinationMethod.invoke(edge);
+                                    Method getDestinationMethod = edge.getClass().getMethod("getDestination");
+                                    Object destObj = getDestinationMethod.invoke(edge);
+                                    Method getDestNodeIdMethod = destObj.getClass().getMethod("getNodeId");
+                                    Integer destNodeId = (Integer) getDestNodeIdMethod.invoke(destObj);
                                     Point2D.Double p2 = nodePositions.get(destNodeId);
                                     
                                     if (p2 != null) {
-                                        drawGlowingLine(g2d, p1, p2, HOLO_BLUE, 1.5f);
+                                        // Draw road connections with more visible glow
+                                        drawGlowingLine(g2d, p1, p2, new Color(150, 200, 255, 120), 2.0f);
                                     }
                                 }
                             }
@@ -608,28 +952,30 @@ public class HolographicPoliceGUI extends JFrame {
                 }
             } catch (Exception e) {
                 // Fallback to demo edges if reflection fails
+                logArea.append("Edge reflection failed, using demo edges: " + e.getMessage() + "\n");
                 drawDemoEdges(g2d);
             }
         }
         
         private void drawDemoEdges(Graphics2D g2d) {
-            // Draw demo edges in a grid pattern
+            // Draw more realistic demo edges based on actual connections that might exist
             for (Map.Entry<Integer, Point2D.Double> entry1 : nodePositions.entrySet()) {
                 Integer nodeId1 = entry1.getKey();
                 Point2D.Double p1 = entry1.getValue();
                 
-                // Connect to nearby nodes (simple grid-like connections)
+                // Connect to nearby nodes (simulating a realistic road network)
                 for (Map.Entry<Integer, Point2D.Double> entry2 : nodePositions.entrySet()) {
                     Integer nodeId2 = entry2.getKey();
                     Point2D.Double p2 = entry2.getValue();
                     
-                    if (nodeId1.equals(nodeId2)) continue;
+                    if (nodeId1.equals(nodeId2) || nodeId1 > nodeId2) continue; // Avoid duplicates
                     
                     double distance = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
                     
-                    // Only connect nearby nodes (within ~80 pixels)
-                    if (distance < 80 && Math.random() > 0.7) { // Sparse connections
-                        drawGlowingLine(g2d, p1, p2, HOLO_BLUE, 1f);
+                    // Connect nearby nodes (within ~80 pixels) to simulate roads
+                    if (distance < 80) {
+                        // Draw more visible road connections
+                        drawGlowingLine(g2d, p1, p2, new Color(120, 180, 240, 80), 1.5f);
                     }
                 }
             }
@@ -642,11 +988,11 @@ public class HolographicPoliceGUI extends JFrame {
                 Point2D.Double pos = nodePositions.get(crime.nodeId);
                 if (pos == null) continue;
                 
-                // Draw crime info tooltip
-                g2d.setColor(HOLO_RED);
-                g2d.setFont(new Font("Arial", Font.BOLD, 9));
-                String crimeInfo = crime.crimeType + " (" + crime.severity + ")";
-                g2d.drawString(crimeInfo, (float)(pos.x + 15), (float)(pos.y - 15));
+                // Draw compact crime info
+                g2d.setColor(new Color(255, 200, 200, 180));
+                g2d.setFont(new Font("Arial", Font.BOLD, 8));
+                String crimeInfo = crime.crimeType + "(" + crime.severity + ")";
+                g2d.drawString(crimeInfo, (float)(pos.x + 12), (float)(pos.y - 8));
             }
         }
         
@@ -664,7 +1010,22 @@ public class HolographicPoliceGUI extends JFrame {
                 if (isPoliceStation(nodeId)) {
                     nodeColor = STATION_BLUE;
                     glowColor = HOLO_BLUE;
-                    radius = 10;
+                    radius = 15;  // Larger radius for better visibility
+                    
+                    // Enhanced pulsing effect for police stations
+                    float pulse = (float)(0.8 + 0.4 * Math.sin(animationPhase * 2));
+                    int pulsedRadius = (int)(radius * pulse);
+                    
+                    // Draw enhanced police station with double glow
+                    drawGlowingSphere(g2d, pos, pulsedRadius, nodeColor, glowColor);
+                    
+                    // Add extra outer glow ring for visibility
+                    float outerPulse = (float)(0.5 + 0.3 * Math.sin(animationPhase * 1.5));
+                    g2d.setColor(new Color(glowColor.getRed(), glowColor.getGreen(), glowColor.getBlue(), (int)(80 * outerPulse)));
+                    g2d.fillOval((int)(pos.x - radius * 1.8), (int)(pos.y - radius * 1.8), 
+                               (int)(radius * 3.6), (int)(radius * 3.6));
+                    
+                    continue; // Skip normal drawing for stations
                 }
                 
                 // Check if this is a crime location
@@ -673,26 +1034,21 @@ public class HolographicPoliceGUI extends JFrame {
                     glowColor = HOLO_RED;
                     radius = 12;
                     
-                    // Add pulsing effect for crimes
-                    float pulse = (float)(0.8 + 0.4 * Math.sin(animationPhase * 3));
-                    radius = (int)(radius * pulse);
+                    // Static crime nodes - no pulsing for cleaner visuals
                 }
                 
                 // Draw node with glow effect
                 drawGlowingSphere(g2d, pos, radius, nodeColor, glowColor);
                 
-                // Draw node ID for debugging (smaller font)
-                g2d.setColor(new Color(glowColor.getRed(), glowColor.getGreen(), glowColor.getBlue(), 150));
-                g2d.setFont(new Font("Arial", Font.BOLD, 7));
-                g2d.drawString(String.valueOf(nodeId), 
-                             (float)(pos.x + radius + 2), (float)(pos.y - 2));
+                // Node ID text disabled for cleaner visual - only show on click
+                // Text labels were causing visual distortion
             }
         }
         
         private boolean isPoliceStation(int nodeId) {
-            // Check demo stations and try to get real stations
-            int[] demoStations = {0, 3, 45, 99, 113, 125, 135, 145};
-            for (int station : demoStations) {
+            // Only check Floyd-Warshall optimal police stations
+            int[] realStations = {45, 145, 135, 125, 113, 99}; // Floyd-Warshall stations
+            for (int station : realStations) {
                 if (station == nodeId) return true;
             }
             return false;
@@ -745,55 +1101,39 @@ public class HolographicPoliceGUI extends JFrame {
                 
                 drawGlowingSphere(g2d, currentPos, 8, unitColor, HOLO_GREEN);
                 
-                // Draw unit ID
-                g2d.setColor(Color.WHITE);
-                g2d.setFont(new Font("Arial", Font.BOLD, 8));
-                g2d.drawString("U" + unit.unitId, (float)(currentPos.x - 8), (float)(currentPos.y - 12));
-                
-                // Update unit position for next frame
-                updateUnitPosition(unit);
+                // Unit ID labels removed for cleaner visual interface
             }
         }
         
         private Point2D.Double calculateUnitPosition(AnimatedUnit unit) {
+            // Smooth interpolation between nodes instead of teleporting
             if (unit.currentPathIndex >= unit.currentPath.size() - 1) {
-                // Unit has reached destination
-                return nodePositions.get(unit.currentPath.get(unit.currentPath.size() - 1));
+                // Unit has reached final destination
+                int lastNodeId = unit.currentPath.get(unit.currentPath.size() - 1);
+                return nodePositions.get(lastNodeId);
             }
             
-            Point2D.Double startPos = nodePositions.get(unit.currentPath.get(unit.currentPathIndex));
-            Point2D.Double endPos = nodePositions.get(unit.currentPath.get(unit.currentPathIndex + 1));
+            // Get current and next node positions for smooth interpolation
+            int currentNodeId = unit.currentPath.get(unit.currentPathIndex);
+            int nextNodeId = unit.currentPath.get(unit.currentPathIndex + 1);
             
-            if (startPos == null || endPos == null) return startPos;
+            Point2D.Double currentPos = nodePositions.get(currentNodeId);
+            Point2D.Double nextPos = nodePositions.get(nextNodeId);
             
-            // Interpolate between start and end positions
-            double t = unit.pathProgress;
-            double x = startPos.x + (endPos.x - startPos.x) * t;
-            double y = startPos.y + (endPos.y - startPos.y) * t;
-            
-            return new Point2D.Double(x, y);
-        }
-        
-        private void updateUnitPosition(AnimatedUnit unit) {
-            unit.pathProgress += 0.02f; // Adjust speed as needed
-            
-            if (unit.pathProgress >= 1.0f) {
-                unit.pathProgress = 0;
-                unit.currentPathIndex++;
-                
-                // Check if unit reached destination
-                if (unit.currentPathIndex >= unit.currentPath.size() - 1) {
-                    // Unit has arrived at crime scene
-                    removeCrimeAtNode(unit.targetCrimeNodeId);
-                    logArea.append("UNIT " + unit.unitId + " ARRIVED at crime node " + unit.targetCrimeNodeId + "\n");
-                    scrollLogToBottom();
-                }
+            if (currentPos == null || nextPos == null) {
+                // Fallback to current node if positions not found
+                return currentPos != null ? currentPos : new Point2D.Double(0, 0);
             }
+            
+            // Smooth interpolation based on pathProgress
+            double t = unit.pathProgress; // 0.0 to 1.0
+            double interpolatedX = currentPos.x + (nextPos.x - currentPos.x) * t;
+            double interpolatedY = currentPos.y + (nextPos.y - currentPos.y) * t;
+            
+            return new Point2D.Double(interpolatedX, interpolatedY);
         }
         
-        private void removeCrimeAtNode(int nodeId) {
-            activeCrimes.removeIf(crime -> crime.nodeId == nodeId);
-        }
+        // Remove the old updateUnitPosition method as it's now handled in updateAnimation
         
         private void drawArrow(Graphics2D g2d, Point2D.Double start, Point2D.Double end, Color color) {
             // Draw small directional arrow along the path
@@ -847,13 +1187,13 @@ public class HolographicPoliceGUI extends JFrame {
                 // Draw station symbol
                 g2d.setColor(Color.WHITE);
                 g2d.setFont(new Font("Arial", Font.BOLD, 10));
-                g2d.drawString("◎", (float)(pos.x - 5), (float)(pos.y + 3));
+                // Arrow symbols removed for cleaner visual interface
             }
         }
         
         @Override
         public Dimension getPreferredSize() {
-            return new Dimension(1000, 600);
+            return new Dimension(1200, 800); // Match screen-fit size
         }
         
         private void drawGlowingLine(Graphics2D g2d, Point2D.Double p1, Point2D.Double p2, Color color, float width) {

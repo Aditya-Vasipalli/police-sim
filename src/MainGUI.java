@@ -33,7 +33,7 @@ public class MainGUI {
             
             // Launch GUI in Event Dispatch Thread
             SwingUtilities.invokeLater(() -> {
-                gui.HolographicPoliceGUI gui = new gui.HolographicPoliceGUI(cityMap);
+                gui.HolographicPoliceGUI gui = new gui.HolographicPoliceGUI(cityMap, pathfindingService);
                 gui.setVisible(true);
                 System.out.println("Holographic interface online!");
             });
